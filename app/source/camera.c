@@ -7,13 +7,13 @@
 
 #define CAMERA_WIDTH 256
 #define CAMERA_HEIGHT 192
-
 static int save_picture(const char* path, const u16* vram_data) {
 #ifdef EMU
-    // Bypassing file I/O completely on emulator to prevent DLDI write crashes.
-    return 1; 
+    const char* save_path = "sd:/hackthedex/emulator/photo.bmp";
 #else
     const char* save_path = path;
+#endif
+
     FILE* file = fopen(save_path, "wb");
     if (!file) return 0;
 
@@ -38,7 +38,6 @@ static int save_picture(const char* path, const u16* vram_data) {
     bool ok = !ferror(file);
     if (fclose(file) != 0) ok = false;
     return ok;
-#endif
 }
 
 // Keep the live image untouched; all controls live on the touch screen.
@@ -88,7 +87,8 @@ int show_camera_capture(u16* top_vram, u16* bottom_vram, const char* photo_path)
     while (!saved) {
         swiWaitForVBlank();
         
-        // NDMA streams the camera feed directly into top_vram
+        // 1. NDMA streams the camera feed directly into top_vram
+        // The text stamping is completely removed from here
         cameraStartTransfer(top_vram, MCUREG_APT_SEQ_CMD_PREVIEW, 1);
 
         scanKeys();
@@ -109,9 +109,7 @@ int show_camera_capture(u16* top_vram, u16* bottom_vram, const char* photo_path)
                 int confirm_keys = camera_input(true);
 
                 if (confirm_keys & KEY_A) {
-                    int save_success = save_picture(photo_path, top_vram);
-
-                    if (save_success) {
+                    if (save_picture(photo_path, top_vram)) {
                         saved = 1;
                         break;
                     }
